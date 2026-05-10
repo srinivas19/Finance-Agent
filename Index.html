@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>Finance Agent 💰</title>
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="theme-color" content="#0F0F13" />
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body { background: #0F0F13; color: #F0EDE8; font-family: 'DM Sans', 'Segoe UI', sans-serif; min-height: 100vh; }
+    #app { display: flex; flex-direction: column; min-height: 100vh; max-width: 480px; margin: 0 auto; }
+    .header { padding: 16px 20px; border-bottom: 1px solid #1E1E28; display: flex; align-items: center; justify-content: space-between; background: #0F0F13; position: sticky; top: 0; z-index: 10; }
+    .header-title { font-size: 17px; font-weight: 700; }
+    .header-sub { font-size: 11px; color: #4CAF50; margin-top: 2px; }
+    .tab-btn { padding: 7px 14px; border-radius: 20px; border: none; cursor: pointer; font-size: 12px; font-weight: 600; transition: all 0.2s; }
+    .tab-active { background: #A8E6CF; color: #0F0F13; }
+    .tab-inactive { background: #1C1C24; color: #888; }
+    .budget-bar { padding: 14px 20px; background: #13131A; border-bottom: 1px solid #1E1E28; }
+    .budget-row { display: flex; justify-content: space-between; margin-bottom: 7px; font-size: 12px; }
+    .bar-track { height: 6px; background: #1E1E28; border-radius: 3px; overflow: hidden; }
+    .bar-fill { height: 100%; border-radius: 3px; transition: width 0.5s ease; }
+    .budget-remaining { font-size: 11px; color: #666; margin-top: 5px; }
+    .messages { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+    .msg-wrap { display: flex; }
+    .msg-wrap.user { justify-content: flex-end; }
+    .bubble { max-width: 82%; padding: 12px 16px; font-size: 14px; line-height: 1.6; }
+    .bubble.agent { background: #1C1C28; color: #F0EDE8; border-radius: 18px 18px 18px 4px; }
+    .bubble.user { background: #A8E6CF; color: #0F0F13; border-radius: 18px 18px 4px 18px; }
+    .chips { padding: 0 20px 10px; display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; }
+    .chips::-webkit-scrollbar { display: none; }
+    .chip { white-space: nowrap; padding: 6px 13px; border-radius: 16px; border: 1px solid #2A2A38; background: transparent; color: #888; font-size: 12px; cursor: pointer; }
+    .input-row { padding: 10px 20px 28px; display: flex; gap: 10px; }
+    .msg-input { flex: 1; padding: 13px 16px; border-radius: 14px; border: 1px solid #2A2A38; background: #13131A; color: #F0EDE8; font-size: 14px; outline: none; font-family: inherit; }
+    .send-btn { padding: 13px 18px; border-radius: 14px; border: none; font-weight: 700; font-size: 16px; cursor: pointer; transition: all 0.2s; }
+    .send-active { background: #A8E6CF; color: #0F0F13; }
+    .send-inactive { background: #1C1C24; color: #555; cursor: default; }
+    .dashboard { flex: 1; overflow-y: auto; padding: 20px; }
+    .stats-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+    .stat-card { background: #13131A; border-radius: 14px; padding: 14px 12px; border: 1px solid #1E1E28; }
+    .stat-label { font-size: 11px; color: #666; margin-bottom: 5px; }
+    .stat-value { font-size: 18px; font-weight: 700; }
+    .stat-sub { font-size: 11px; color: #555; margin-top: 2px; }
+    .card { background: #13131A; border-radius: 16px; padding: 18px; margin-bottom: 16px; border: 1px solid #1E1E28; }
+    .card-title { font-size: 12px; font-weight: 600; margin-bottom: 14px; color: #666; letter-spacing: 1px; }
+    .cat-row { margin-bottom: 12px; }
+    .cat-label-row { display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 13px; }
+    .cat-bar { height: 5px; background: #1E1E28; border-radius: 3px; overflow: hidden; }
+    .cat-fill { height: 100%; border-radius: 3px; }
+    .txn-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; border-radius: 10px; background: #0F0F13; margin-bottom: 8px; }
+    .txn-left { display: flex; align-items: center; gap: 10px; }
+    .txn-icon { font-size: 18px; }
+    .txn-name { font-size: 13px; font-weight: 500; }
+    .txn-meta { font-size: 11px; color: #555; }
+    .txn-amount { font-size: 14px; font-weight: 700; color: #FF9999; }
+  </style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+const CATEGORIES = ["Food & Dining","Transport","Shopping","Groceries","Entertainment","Health","Utilities","Rent","Other"];
+const CAT_COLORS = {"Food & Dining":"#FF6B6B","Transport":"#4ECDC4","Shopping":"#FFE66D","Groceries":"#A8E6CF","Entertainment":"#FF8B94","Health":"#B5EAD7","Utilities":"#C7CEEA","Rent":"#FFDAC1","Other":"#E2E2E2"};
+const CAT_ICONS = {"Food & Dining":"🍽️","Transport":"🚗","Shopping":"🛍️","Groceries":"🛒","Entertainment":"🎬","Health":"💊","Utilities":"⚡","Rent":"🏠","Other":"📦"};
+const BUDGET = 30000;
+let expenses = JSON.parse(localStorage.getItem('fa_expenses') || 'null') || [
+  {id:1,amount:1200,category:"Food & Dining",description:"Lunch with team",date:"2026-05-09"},
+  {id:2,amount:450,category:"Transport",description:"Ola cab to office",date:"2026-05-08"},
+  {id:3,amount:3200,category:"Groceries",description:"Big Basket order",date:"2026-05-07"},
+  {id:4,amount:799,category:"Entertainment",description:"Netflix subscription",date:"2026-05-06"},
+  {id:5,amount:600,category:"Food & Dining",description:"Dinner at restaurant",date:"2026-05-05"},
+];
+let messages = [{role:"agent",text:"Hi! I'm your finance agent 👋 Tell me about any expense — like \"spent ₹500 on dinner\" or \"paid ₹1200 for Uber\". I'll log it and help you manage money smarter. Your data is saved on this device!"}];
+let view = "chat";
+function saveExpenses() { localStorage.setItem('fa_expenses', JSON.stringify(expenses)); }
+function detectCategory(text) {
+  const t = text.toLowerCase();
+  if (/\b(lunch|dinner|breakfast|food|eat|restaurant|cafe|chai|coffee|tea|zomato|swiggy|biryani|pizza|burger|hotel|dhaba|snack|meal)\b/.test(t)) return "Food & Dining";
+  if (/\b(uber|ola|cab|auto|petrol|fuel|bus|metro|train|flight|parking|toll|rapido|bike|taxi|travel)\b/.test(t)) return "Transport";
+  if (/\b(amazon|flipkart|myntra|clothes|shirt|shoes|bag|shopping|bought|purchase|order)\b/.test(t)) return "Shopping";
+  if (/\b(groceries|grocery|vegetable|fruit|milk|big basket|dmart|supermarket|kirana|sabzi|rice|dal)\b/.test(t)) return "Groceries";
+  if (/\b(movie|netflix|prime|hotstar|spotify|game|concert|cinema|show|subscription|ott)\b/.test(t)) return "Entertainment";
+  if (/\b(medicine|doctor|hospital|pharmacy|health|medical|clinic|chemist|tablet|consult)\b/.test(t)) return "Health";
+  if (/\b(electricity|water|wifi|internet|bill|recharge|mobile|phone|gas|maintenance|society)\b/.test(t)) return "Utilities";
+  if (/\b(rent|flat|apartment|house|pg|room|landlord)\b/.test(t)) return "Rent";
+  return "Other";
+}
+function extractExpense(text) {
+  const t = text.toLowerCase();
+  if (!/\b(spent|paid|bought|purchased|spend|pay|cost|charged|expense|rs\.?|₹|rupee)\b/.test(t)) return null;
+  const m = text.match(/(?:₹|rs\.?\s*)(\d+(?:,\d+)?(?:\.\d+)?)|(\d+(?:,\d+)?(?:\.\d+)?)\s*(?:rs|rupees?)/i);
+  if (!m) return null;
+  const amount = parseFloat((m[1]||m[2]).replace(",",""));
+  if (!amount || amount <= 0) return null;
+  let date = new Date().toISOString().split("T")[0];
+  if (/yesterday/.test(t)) { const d=new Date(); d.setDate(d.getDate()-1); date=d.toISOString().split("T")[0]; }
+  const category = detectCategory(text);
+  const desc = text.replace(/(?:₹|rs\.?\s*)\d+[\d,.]*/gi,"").replace(/\d+[\d,.]*\s*(?:rs|rupees?)/gi,"")
+    .replace(/\b(spent|paid|bought|purchased|on|for|at|the|a|an|i|yesterday|today)\b/gi,"")
+    .replace(/\s+/g," ").trim().slice(0,40) || category;
+  return {amount,category,description:desc.charAt(0).toUpperCase()+desc.slice(1),date};
+}
+function generateAdvice(text) {
+  const t = text.toLowerCase();
+  const totalSpent = expenses.reduce((s,e)=>s+e.amount,0);
+  const remaining = BUDGET - totalSpent;
+  const pct = Math.round((totalSpent/BUDGET)*100);
+  const byCategory = CATEGORIES.map(cat=>({cat,total:expenses.filter(e=>e.category===cat).reduce((s,e)=>s+e.amount,0)})).filter(c=>c.total>0).sort((a,b)=>b.total-a.total);
+  const topCat = byCategory[0];
+  if (/tip|advice|suggest|improve|better|help/.test(t)) {
+    const tips = [];
+    if (topCat&&topCat.total>BUDGET*0.3) tips.push(`Your biggest spend is ${topCat.cat} at ₹${topCat.total.toLocaleString()} — ${Math.round(topCat.total/BUDGET*100)}% of budget. Try setting a sub-limit.`);
+    const food=byCategory.find(c=>c.cat==="Food & Dining")?.total||0;
+    if (food>5000) tips.push(`You've spent ₹${food.toLocaleString()} on food. Cooking at home 2–3 extra days could save ₹1,500–2,000/month.`);
+    const ent=byCategory.find(c=>c.cat==="Entertainment")?.total||0;
+    if (ent>1000) tips.push(`Check if you're using all subscriptions — ₹${ent.toLocaleString()} on entertainment adds up fast.`);
+    if (!tips.length) tips.push(`You're at ${pct}% of your monthly budget with ₹${remaining.toLocaleString()} remaining. Great discipline!`);
+    return tips.join(" ");
+  }
+  if (/how.*spend|spending|status|summary/.test(t)) {
+    if (!totalSpent) return "No expenses logged yet! Start by telling me what you spent today.";
+    return `You've spent ₹${totalSpent.toLocaleString()} this month — ${pct}% of your ₹30,000 budget. ${topCat?`Top: ${topCat.cat} at ₹${topCat.total.toLocaleString()}.`:""} ₹${remaining.toLocaleString()} remaining.`;
+  }
+  if (/save|cut|reduce|less/.test(t)) {
+    const s=byCategory.filter(c=>c.cat!=="Rent"&&c.cat!=="Utilities"&&c.total>1000).slice(0,2).map(c=>`${c.cat} (₹${c.total.toLocaleString()})`);
+    if (!s.length) return "Your spending looks controlled! Keep logging for more personalised advice.";
+    return `Best saving opportunities: ${s.join(" and ")}. Skipping one food delivery a week can save ₹500–1,000/month.`;
+  }
+  if (/budget|left|remain/.test(t)) return `You have ₹${remaining.toLocaleString()} left. ${pct>80?"⚠️ Close to your limit!":pct>50?"On track, watch discretionary spending.":"Great shape this month!"}`;
+  return `You've spent ₹${totalSpent.toLocaleString()} this month (${pct}% of budget). ${topCat?`Most went to ${topCat.cat}.`:"Start logging to see patterns."} Ask me for tips or where to save!`;
+}
+function getStats() {
+  const totalSpent=expenses.reduce((s,e)=>s+e.amount,0);
+  const remaining=BUDGET-totalSpent;
+  const pct=Math.min((totalSpent/BUDGET)*100,100);
+  const byCategory=CATEGORIES.map(cat=>({cat,total:expenses.filter(e=>e.category===cat).reduce((s,e)=>s+e.amount,0)})).filter(c=>c.total>0).sort((a,b)=>b.total-a.total);
+  return {totalSpent,remaining,pct,byCategory,topCat:byCategory[0]};
+}
+function render() {
+  const {totalSpent,remaining,pct,byCategory,topCat}=getStats();
+  const app=document.getElementById('app');
+  const header=`<div class="header"><div><div class="header-title">💰 Finance Agent</div><div class="header-sub">● Works offline · Data saved on device</div></div><div style="display:flex;gap:8px"><button class="tab-btn ${view==='chat'?'tab-active':'tab-inactive'}" onclick="switchView('chat')">💬 Chat</button><button class="tab-btn ${view==='dashboard'?'tab-active':'tab-inactive'}" onclick="switchView('dashboard')">📊 Dashboard</button></div></div>`;
+  if (view==='chat') {
+    app.innerHTML=header+`<div class="budget-bar"><div class="budget-row"><span style="color:#888">Monthly Budget</span><span style="color:${pct>80?'#FF6B6B':'#A8E6CF'};font-weight:600">₹${totalSpent.toLocaleString()} / ₹${BUDGET.toLocaleString()}</span></div><div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${pct>80?'#FF6B6B':pct>60?'#FFE66D':'#A8E6CF'}"></div></div><div class="budget-remaining">₹${remaining.toLocaleString()} remaining this month</div></div><div class="messages" id="msgs">${messages.map(m=>`<div class="msg-wrap ${m.role}"><div class="bubble ${m.role}">${m.text}</div></div>`).join('')}</div><div class="chips">${["Spent ₹200 on chai","Any tips for me?","How's my spending?","Where can I save?"].map(s=>`<button class="chip" onclick="fillInput(this)">${s}</button>`).join('')}</div><div class="input-row"><input class="msg-input" id="msgInput" placeholder="e.g. spent ₹350 on lunch..." onkeydown="if(event.key==='Enter')doSend()" oninput="updateBtn()" /><button class="send-btn send-inactive" id="sendBtn" onclick="doSend()">→</button></div>`;
+    document.getElementById('msgs').scrollTop=99999;
+  } else {
+    app.innerHTML=header+`<div class="dashboard"><div class="stats-grid"><div class="stat-card"><div class="stat-label">Spent</div><div class="stat-value" style="color:#FF6B6B">₹${totalSpent.toLocaleString()}</div><div class="stat-sub">this month</div></div><div class="stat-card"><div class="stat-label">Left</div><div class="stat-value" style="color:#A8E6CF">₹${remaining.toLocaleString()}</div><div class="stat-sub">of ₹30,000</div></div><div class="stat-card"><div class="stat-label">Top</div><div class="stat-value" style="color:#FFE66D">${topCat?CAT_ICONS[topCat.cat]:"—"}</div><div class="stat-sub">${topCat?topCat.cat.split(" ")[0]:"none"}</div></div></div><div class="card"><div class="card-title">SPENDING BY CATEGORY</div>${byCategory.length===0?'<div style="color:#555;font-size:13px">No expenses yet!</div>':''}${byCategory.map(c=>`<div class="cat-row"><div class="cat-label-row"><span>${CAT_ICONS[c.cat]} ${c.cat}</span><span style="font-weight:600">₹${c.total.toLocaleString()}</span></div><div class="cat-bar"><div class="cat-fill" style="width:${(c.total/totalSpent)*100}%;background:${CAT_COLORS[c.cat]}"></div></div></div>`).join('')}</div><div class="card"><div class="card-title">RECENT TRANSACTIONS</div>${expenses.slice(0,10).map(e=>`<div class="txn-item"><div class="txn-left"><span class="txn-icon">${CAT_ICONS[e.category]}</span><div><div class="txn-name">${e.description}</div><div class="txn-meta">${e.category} · ${e.date}</div></div></div><span class="txn-amount">−₹${e.amount.toLocaleString()}</span></div>`).join('')}</div></div>`;
+  }
+}
+function switchView(v){view=v;render();}
+function fillInput(btn){const inp=document.getElementById('msgInput');if(inp){inp.value=btn.innerText;updateBtn();inp.focus();}}
+function updateBtn(){const inp=document.getElementById('msgInput');const btn=document.getElementById('sendBtn');if(!inp||!btn)return;btn.className='send-btn '+(inp.value.trim()?'send-active':'send-inactive');}
+function doSend(){
+  const inp=document.getElementById('msgInput');
+  if(!inp||!inp.value.trim())return;
+  const userMsg=inp.value.trim();inp.value='';
+  messages.push({role:'user',text:userMsg});render();
+  setTimeout(()=>{
+    const expense=extractExpense(userMsg);let reply='';
+    if(expense){
+      expenses.unshift({id:Date.now(),...expense});saveExpenses();
+      const {totalSpent,pct}=getStats();
+      reply=`✅ Logged ₹${expense.amount.toLocaleString()} for ${expense.category}! You've now spent ₹${totalSpent.toLocaleString()} this month (${Math.round(pct)}% of budget).`;
+      if(expense.category==="Food & Dining")reply+=" Eating out adds up — consider cooking at home sometimes!";
+      if(expense.category==="Transport")reply+=" If this is regular, a monthly pass might save money.";
+      if(pct>80)reply+=" ⚠️ Getting close to your monthly limit!";
+    } else { reply=generateAdvice(userMsg); }
+    messages.push({role:'agent',text:reply});render();
+  },600);
+}
+render();
+</script>
+</body>
+</html>
